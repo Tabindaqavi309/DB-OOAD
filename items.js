@@ -1,4 +1,5 @@
 const mysql = require("mysql");
+const multer = require("multer");
 const mysqlConnection = mysql.createConnection({
   host: "localhost",
   user: "root",
@@ -15,7 +16,35 @@ const router = express.Router();
 const bodyParser = require("body-parser");
 app = require("./app.js");
 //app.use(bodyParser.json());
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "pictures/");
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + file.originalname);
+  }
+});
+const upload = multer({ storage: storage });
 
+router.post("/uploadimage", upload.single("image"), (req, res) => {
+  var fileInfo = req.file;
+  var title = req.body.title;
+  console.log(req.file.path);
+  console.log(req.body.id);
+  mysqlConnection.query(
+    "UPDATE inventory SET image = ? WHERE ID = ?",
+    [req.file.path, req.body.id],
+
+    (err, rows, fields) => {
+      if (err) {
+        return res.status(400);
+      } else {
+        return res.send(fileInfo);
+      }
+    }
+  );
+  //res.send(fileInfo);
+});
 router.get("/", (req, res) => {
   let { Name, Category, Price, minPrice, maxPrice } = req.query;
   console.log(Name, Category, Price);
@@ -99,8 +128,8 @@ router.get("/:id", (req, res) => {
 router.post("/", (req, res) => {
   let newInventory = req.body;
   let sql =
-    "SET @ID = ?; SET @Name = ?; SET @Category = ?; SET @Description = ?;SET @Price = ?; SET @image=?; \
-  CALL AddorEditInventory(@ID,@Name,@Category,@Description,@Price,@image); ";
+    "SET @ID = ?; SET @Name = ?; SET @Category = ?; SET @Description = ?;SET @Price = ?; \
+  CALL AddorEditInventory(@ID,@Name,@Category,@Description,@Price); ";
   mysqlConnection.query(
     sql,
     [
@@ -108,8 +137,7 @@ router.post("/", (req, res) => {
       newInventory.Name,
       newInventory.Category,
       newInventory.Description,
-      newInventory.Price,
-      newInventory.image
+      newInventory.Price
     ],
     (err, rows, fields) => {
       if (!err) {
@@ -120,4 +148,49 @@ router.post("/", (req, res) => {
     }
   );
 });
+router.delete("/:id", (req, res) => {
+  //const id = req;
+
+  mysqlConnection.query(
+    "DELETE FROM inventory WHERE ID=?",
+    [req.params.id],
+    (err, rows, fields) => {
+      if (err) {
+        return res.send(err);
+      } else {
+        return res.send({
+          status: "Deleted Successfully",
+          rows: rows
+        });
+      }
+    }
+  );
+});
+router.put("/", (req, res) => {
+  let newInventory = req.body;
+  let sql =
+    "SET @ID = ?; SET @Name = ?; SET @Category = ?; SET @Description = ?;SET @Price = ?; \
+  CALL AddorEditInventory(@ID,@Name,@Category,@Description,@Price); ";
+  mysqlConnection.query(
+    sql,
+    [
+      newInventory.ID,
+      newInventory.Name,
+      newInventory.Category,
+      newInventory.Description,
+      newInventory.Price
+    ],
+    (err, rows, fields) => {
+      if (!err) {
+        return res.send({
+          status: "Updated Successfully",
+          rows: rows
+        });
+      } else {
+        return res.send(err);
+      }
+    }
+  );
+});
+
 module.exports = router;
