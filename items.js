@@ -119,8 +119,13 @@ router.get("/:id", (req, res) => {
     (err, rows, fields) => {
       if (err) {
         return res.status(400);
-      } else {
+      } else if (rows.length > 0) {
         return res.send(rows);
+      } else if (rows.length <= 0) {
+        return res.send({
+          error: "ERROR 1054 Unknown column ID in where clause",
+          status: 1054
+        });
       }
     }
   );
@@ -150,17 +155,35 @@ router.post("/", (req, res) => {
 });
 router.delete("/:id", (req, res) => {
   //const id = req;
-
+  //let newUser = req.body;
+  //console.log(req.params.id);
+  //console.log(req.body.customer_id);
   mysqlConnection.query(
-    "DELETE FROM inventory WHERE ID=?",
+    "SELECT * from inventory where ID = ?",
     [req.params.id],
-    (err, rows, fields) => {
-      if (err) {
-        return res.send(err);
-      } else {
+    (err, rows, field) => {
+      console.log("The length is " + rows.length);
+      if (rows.length > 0) {
+        if (rows) {
+          mysqlConnection.query(
+            "DELETE FROM inventory WHERE ID=?",
+            [req.params.id],
+            (err, rows, fields) => {
+              if (err) {
+                return res.send(err);
+              } else {
+                return res.send({
+                  status: "Deleted Successfully",
+                  rows: rows
+                });
+              }
+            }
+          );
+        }
+      } else if (rows.length <= 0) {
         return res.send({
-          status: "Deleted Successfully",
-          rows: rows
+          error: "ERROR 1054 Unknown column ID in where clause",
+          status: 1054
         });
       }
     }
@@ -168,26 +191,44 @@ router.delete("/:id", (req, res) => {
 });
 router.put("/", (req, res) => {
   let newInventory = req.body;
-  let sql =
-    "SET @ID = ?; SET @Name = ?; SET @Category = ?; SET @Description = ?;SET @Price = ?; \
-  CALL AddorEditInventory(@ID,@Name,@Category,@Description,@Price); ";
   mysqlConnection.query(
-    sql,
-    [
-      newInventory.ID,
-      newInventory.Name,
-      newInventory.Category,
-      newInventory.Description,
-      newInventory.Price
-    ],
-    (err, rows, fields) => {
-      if (!err) {
+    "SELECT * from inventory where ID = ?",
+    [req.body.ID],
+    (err, rows, field) => {
+      //console.log("The rows " + rows);
+      if (rows.length > 0) {
+        if (rows) {
+          let sql =
+            "SET @ID = ?; SET @Name = ?; SET @Category = ?; SET @Description = ?;SET @Price = ?; \
+  CALL AddorEditInventory(@ID,@Name,@Category,@Description,@Price); ";
+          mysqlConnection.query(
+            sql,
+            [
+              newInventory.ID,
+              newInventory.Name,
+              newInventory.Category,
+              newInventory.Description,
+              newInventory.Price
+            ],
+            (err, rows, fields) => {
+              if (!err) {
+                // console.log(rows.fields);
+                return res.send({
+                  status: "Updated Successfully",
+                  rows: rows
+                });
+              } else {
+                return res.send(err);
+              }
+            }
+          );
+        }
+      } else if (rows.length <= 0) {
+        // console.log(rows.fields);
         return res.send({
-          status: "Updated Successfully",
-          rows: rows
+          error: "ERROR 1054 Unknown column ID in where clause",
+          status: 1054
         });
-      } else {
-        return res.send(err);
       }
     }
   );

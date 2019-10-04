@@ -1,12 +1,13 @@
 //const mysql = require("mysql");
 const items = require("./items.js");
+const usercrud = require("./usercrud.js");
 const express = require("express");
 //const newFile = require('/newFile');
 const app = express();
 const bodyParser = require("body-parser");
 app.use(bodyParser.json());
 app.use("/manageitems", items);
-
+app.use("/user", usercrud);
 app.listen(3000, err => {
   if (!err) console.log("Server Is running at Local Host : 3000");
   else console.log(err);
